@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Attendance System</title>
+    <style>
+      body {
+        font-family: Arial;
+        max-width: 800px;
+        margin: 30px auto;
+        padding: 15px;
+        background: #f1f5f9;
+      }
+
+      h1,
+      h2 {
+        color: #1e3a8a;
+      }
+
+      section {
+        background: white;
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 10px;
+      }
+
+      input,
+      select,
+      button {
+        padding: 10px;
+        margin: 6px 0;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      button {
+        background: #2563eb;
+        color: white;
+        border: 0;
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+      }
+
+      .present {
+        color: green;
+      }
+
+      .absent {
+        color: red;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Cloud-Based AI Attendance System</h1>
+    <p id="connection">Connecting to backend...</p>
+
+    <section>
+      <h2>Attendance Summary</h2>
+      <p>Total: <span id="total">0</span></p>
+      <p>Present: <span id="present">0</span></p>
+      <p>Absent: <span id="absent">0</span></p>
+    </section>
+
+    <section>
+      <h2>Mark Attendance</h2>
+      <form id="form">
+        <label>Student ID</label>
+        <input id="student" required placeholder="STU001" />
+
+        <label>Date</label>
+        <input id="date" type="date" required />
+
+        <label>Course ID</label>
+        <input id="course" required placeholder="CLOUD101" />
+
+        <label>Status</label>
+        <select id="status">
+          <option value="present">Present</option>
+          <option value="absent">Absent</option>
+        </select>
+
+        <button id="save" type="submit">Save Attendance</button>
+        <p id="message"></p>
+      </form>
+    </section>
+
+    <section>
+      <h2>Attendance Records</h2>
+      <button type="button" onclick="loadRecords()">Refresh Records</button>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Student</th>
+            <th>Date</th>
+            <th>Course</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="records"></tbody>
+      </table>
+    </section>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let allRecords = [];
+
+      $("date").value = new Date().toLocaleDateString("en-CA");
+
+      async function loadRecords() {
+        try {
+          const response = await fetch("/attendance");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+
+          const data = await response.json();
+          allRecords = data.records;
+
+          if (!Array.isArray(allRecords)) {
+            throw new Error("Invalid records response");
+          }
+
+          $("total").textContent = allRecords.length;
+          $("present").textContent = allRecords.filter(
+            (r) => r.status === "present",
+          ).length;
+          $("absent").textContent = allRecords.filter(
+            (r) => r.status === "absent",
+          ).length;
+
+          $("records").replaceChildren();
+
+          allRecords.forEach((r) => {
+            const row = $("records").insertRow();
+            [
+              r.id,
+              r.student_id,
+              r.attendance_date,
+              r.course_id,
+              r.status,
+            ].forEach((value) => {
+              const cell = row.insertCell();
+              cell.textContent = value || "";
+              if (value === "present" || value === "absent") {
+                cell.className = value;
+              }
+            });
+          });
+
+          $("connection").textContent = "Backend connected";
+          $("connection").style.color = "green";
+        } catch (error) {
+          $("connection").textContent = "Backend/API error: " + error.message;
+          $("connection").style.color = "red";
+          console.error(error);
+        }
+      }
+
+      $("form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        $("save").disabled = true;
+        $("message").textContent = "Saving...";
+
+        try {
+          const response = await fetch("/attendance", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              student_id: $("student").value.trim(),
+              attendance_date: $("date").value,
+              course_id: $("course").value.trim(),
+              status: $("status").value,
+            }),
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || "Save failed");
+
+          $("message").textContent = "Attendance saved successfully!";
+          $("message").style.color = "green";
+          $("student").value = "";
+          $("course").value = "";
+          await loadRecords();
+        } catch (error) {
+          $("message").textContent = error.message;
+          $("message").style.color = "red";
+        } finally {
+          $("save").disabled = false;
+        }
+      });
+
+      loadRecords();
+    </script>
+  </body>
+</html>
+```

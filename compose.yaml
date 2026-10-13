@@ -1,0 +1,11 @@
+services:
+  attendance-backend:
+    build: .
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    volumes:
+      - attendance-data:/data
+
+volumes:
+  attendance-data:
